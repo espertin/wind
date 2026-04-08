@@ -13,9 +13,9 @@ public class TrolagemHacker : Form
     private System.Windows.Forms.Timer timerProtecao;
     private const string CHAVE_CORRETA = "123";
     
-    // Links das imagens fornecidos por você
+    // Links das imagens (Hacker e QR Code do seu GitHub)
     private const string URL_HACKER = "https://i.ibb.co/NgkJFxH8/ASA.png";
-    private const string URL_QRCODE = "https://codigosdebarrasbrasil.com.br/wp-content/uploads/2019/09/codigo_qr-300x300.png";
+    private const string URL_QRCODE = "https://raw.githubusercontent.com/espertin/wind/main/QR.png";
 
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
@@ -76,6 +76,9 @@ public class TrolagemHacker : Form
         // --- DOWNLOAD E EXIBIÇÃO DAS IMAGENS ---
         using (WebClient client = new WebClient())
         {
+            // Ignora verificação de SSL para garantir o download das imagens
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
             try {
                 // Imagem do Hacker no Topo
                 byte[] imgData = client.DownloadData(URL_HACKER);
@@ -88,7 +91,7 @@ public class TrolagemHacker : Form
             } catch { }
 
             try {
-                // QR Code no Centro
+                // QR Code do GitHub no Centro
                 byte[] qrData = client.DownloadData(URL_QRCODE);
                 PictureBox pbQR = new PictureBox();
                 using (var ms = new MemoryStream(qrData)) { pbQR.Image = Image.FromStream(ms); }
