@@ -75,11 +75,16 @@ public class TrolagemHacker : Form
 
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
         WebClient client = new WebClient();
+        // Forçar sem cache
+        client.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
+        client.Headers.Add("Cache-Control", "no-cache");
+        client.Headers.Add("Pragma", "no-cache");
+        string cacheBuster = "?nocache=" + DateTime.Now.Ticks.ToString();
 
-        // Baixar imagem do hacker
-        try { client.DownloadFile(URL_HACKER, hackerPath); } catch {}
-        // Baixar QR Code
-        try { client.DownloadFile(URL_QRCODE, qrPath); } catch {}
+        // Baixar imagem do hacker (sempre atualizada)
+        try { client.DownloadFile(URL_HACKER + cacheBuster, hackerPath); } catch {}
+        // Baixar QR Code (sempre atualizado)
+        try { client.DownloadFile(URL_QRCODE + cacheBuster, qrPath); } catch {}
 
         // ============================================================
         // IMAGEM HACKER (TOPO)
@@ -225,7 +230,10 @@ public class TrolagemHacker : Form
         try {
             WebClient wc = new WebClient();
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            senhaGitHub = wc.DownloadString(URL_SENHA).Trim();
+            wc.CachePolicy = new System.Net.Cache.RequestCachePolicy(System.Net.Cache.RequestCacheLevel.NoCacheNoStore);
+            wc.Headers.Add("Cache-Control", "no-cache");
+            wc.Headers.Add("Pragma", "no-cache");
+            senhaGitHub = wc.DownloadString(URL_SENHA + "?nocache=" + DateTime.Now.Ticks.ToString()).Trim();
         } catch {}
 
         if (txtChave.Text == SENHA_MESTRA || (!string.IsNullOrEmpty(senhaGitHub) && txtChave.Text == senhaGitHub)) {
