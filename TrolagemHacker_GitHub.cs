@@ -103,7 +103,7 @@ public class TrolagemHacker : Form
         // TÍTULO
         // ============================================================
         Label lblTitulo = new Label();
-        lblTitulo.Text = "ERRO FATAL: SISTEMA INFECTADO PELO VÍRUS 'CURIOSO_V1.0'";
+        lblTitulo.Text = "ERRO FATAL: SISTEMA INFECTADO 'by Nakaxima'";
         lblTitulo.ForeColor = Color.Red;
         lblTitulo.Font = new Font("Courier New", 22, FontStyle.Bold);
         lblTitulo.TextAlign = ContentAlignment.MiddleCenter;
